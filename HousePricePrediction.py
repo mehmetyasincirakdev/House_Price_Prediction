@@ -48,7 +48,7 @@ def check_dataframe(dataFrame):
     print("########## Quantiles ########## ")
     print(dataframe.quantile([0,0.05,0.50,0.95,0.99,1]).T)
 check_dataframe(dataframe)
-
+print(dataframe.nunique())
 # Numeric ve kategorik değişkenlerin yakalanması
 
 def grab_col_names(dataFrame,cat_th=10,car_th=20):
@@ -81,3 +81,40 @@ def grab_col_names(dataFrame,cat_th=10,car_th=20):
     return cat_cols, cat_but_car, num_cols
 
 cat_cols, cat_but_car, num_cols = grab_col_names(dataframe)
+
+# Kategorik Değişken Analizi
+
+def cat_summary(dataFrame, col_name,plot=False):
+    print(pandas.DataFrame({col_name:dataFrame[col_name].value_counts(), "Ratio": 100 * dataFrame[col_name].value_counts()/len(dataFrame)}))
+    if plot:
+        seaborn.countplot(x=dataFrame[col_name],data=dataFrame)
+        plot.show(block=True)
+
+for col in cat_cols:
+    cat_summary(dataframe,col)
+
+def num_summary(dataFrame,numerical_col,plot=False):
+    quantiles=[0.05,0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,0.95,0.99]
+    print(dataFrame[numerical_col].describe(quantiles).T)
+
+    if plot:
+        dataFrame[numerical_col].hist(bins=50)
+        plot.xlabel(numerical_col)
+        plot.tittle(numerical_col)
+        plot.show(block=True)
+        print("#################################################")
+
+for col in num_cols:
+    num_summary(dataframe,col)
+
+def target_summary_with_cat(dataFrame,target,categorical_col):
+    print(pandas.DataFrame({"TARGET_MEAN":dataFrame.groupby(categorical_col)[target].mean()}),end="\n\n\n")
+
+for col in cat_cols:
+    target_summary_with_cat(dataframe,"SalePrice",col)
+
+dataframe["SalePrice"].hist(bins=100)
+plot.show(block=True)
+
+numpy.log1p(dataframe["SalePrice"].hist(bins=50))
+plot.show(block=True)
