@@ -169,3 +169,99 @@ def check_outlier(dataFrame, col_name):
 for col in num_cols:
     if col != "SalePrice":
         print(col, check_outlier(dataframe, col))
+
+
+def missing_values_table(dataFrame, na_name=False):
+    na_columns = [col for col in dataFrame.columns if dataframe[col].isnull().sum() > 0]
+
+    n_miss = dataFrame[na_columns].isnull().sum().sort_values(ascending=False)
+
+    ratio = (dataFrame[na_columns].isnull().sum() / dataFrame.shape[0] * 100).sort_values(ascending=False)
+
+    missing_df = pandas.concat([n_miss, numpy.round(ratio, 2)], axis=1, keys=['n_miss', 'ratio'])
+
+    print(missing_df, end="\n")
+
+    if na_name:
+        return na_columns
+
+
+missing_values_table(dataframe)
+
+dataframe["Alley"].value_counts()
+dataframe["BsmtQual"].value_counts()
+
+no_cols = ["Alley", "BsmtQual", "BsmtCond", "BsmtExposure", "BsmtFinType1", "BsmtFinType2", "FireplaceQu",
+           "GarageType", "GarageFinish", "GarageQual", "GarageCond", "PoolQC", "Fence", "MiscFeature"]
+
+# Kolonlardaki boşlukların "No" ifadesi ile doldurulması
+for col in no_cols:
+    dataframe[col].fillna("No", inplace=True)
+
+missing_values_table(dataframe)
+
+
+# Bu fonsksiyon eksik değerlerin median veya mean ile doldurulmasını sağlar
+
+def quick_missing_imp(data, num_method="median", cat_length=20, target="SalePrice"):
+    variables_with_na = [col for col in data.columns if data[col].isnull().sum() > 0]  # Eksik değere sahip olan değişkenler listelenir
+
+    temp_target = data[target]
+
+    print("# BEFORE")
+    print(data[variables_with_na].isnull().sum(), "\n\n")  # Uygulama öncesi değişkenlerin eksik değerlerinin sayısı
+
+    # değişken object ve sınıf sayısı cat_lengthe eşit veya altındaysa boş değerleri mode ile doldur
+    data = data.apply(lambda x: x.fillna(x.mode()[0]) if (x.dtype == "O" and len(x.unique()) <= cat_length) else x, axis=0)
+
+    # num_method mean ise tipi object olmayan değişkenlerin boş değerleri ortalama ile dolduruluyor
+    if num_method == "mean":
+        data = data.apply(lambda x: x.fillna(x.mean()) if x.dtype != "O" else x, axis=0)
+    # num_method median ise tipi object olmayan değişkenlerin boş değerleri ortalama ile dolduruluyor
+    elif num_method == "median":
+        data = data.apply(lambda x: x.fillna(x.median()) if x.dtype != "O" else x, axis=0)
+
+    data[target] = temp_target
+
+    print("# AFTER \n Imputation method is 'MODE' for categorical variables!")
+    print(" Imputation method is '" + num_method.upper() + "' for numeric variables! \n")
+    print(data[variables_with_na].isnull().sum(), "\n\n")
+
+    return data
+
+
+df = quick_missing_imp(dataframe, num_method="median", cat_length=17)
+
+
+# Rare analizi yapınız ve rare encoder uygulayınız.
+######################################
+
+# Kategorik kolonların dağılımının incelenmesi
+
+def rare_analyser(dataFrame, target, cat_cols):
+    for col in cat_cols:
+        print(col, ":", len(dataFrame[col].value_counts()))
+        print(pandas.DataFrame({"COUNT": dataFrame[col].value_counts(),
+                                "RATIO": dataFrame[col].value_counts() / len(dataFrame),
+                                "TARGET_MEAN": dataFrame.groupby(col)[target].mean()}), end="\n\n\n")
+
+
+rare_analyser(dataframe, "SalePrice", cat_cols)
+
+
+# Nadir sınıfların tespit edilmesi
+def rare_encoder(dataFrame, rare_perc):
+    temp_dataFrame = dataFrame.copy()
+
+    rare_columns = [col for col in temp_dataFrame.columns if temp_dataFrame[col].dtypes == 'O'
+                    and (temp_dataFrame[col].value_counts() / len(temp_dataFrame) < rare_perc).any(axis=None)]
+
+    for var in rare_columns:
+        tmp = temp_dataFrame[var].value_counts() / len(temp_dataFrame)
+        rare_labels = tmp[tmp < rare_perc].index
+        temp_dataFrame[var] = np.where(temp_dataFrame[var].isin(rare_labels), 'Rare', temp_dataFrame[var])
+
+    return temp_dataFrame
+
+
+rare_encoder(df, 0.01)
